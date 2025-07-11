@@ -31,3 +31,6 @@ yarn-error.log*
 .vscode
 *.swp
 *.swo
+
+# User config files
+.inputrc
