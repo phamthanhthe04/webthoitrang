@@ -19,8 +19,17 @@ router.use('/cart', require('./cart'));
 // Wishlist routes
 router.use('/wishlist', require('./wishlist'));
 
+// Wallet routes
+router.use('/wallet', require('./wallet'));
+
 // Admin routes
 router.use('/admin', require('./admin'));
+
+// User management routes
+router.use('/users', require('./users'));
+
+// Dashboard routes
+router.use('/dashboard', require('./dashboard'));
 
 // Test route
 router.get('/test', (req, res) => {

@@ -17,9 +17,9 @@ router.get('/slug/:slug', getCategoryBySlug);
 router.get('/slug/:slug/products', getProductsByCategorySlug);
 router.get('/:id', getCategory);
 
-// Admin routes
-router.post('/', auth, isAdmin, createCategory);
-router.put('/:id', auth, isAdmin, updateCategory);
-router.delete('/:id', auth, isAdmin, deleteCategory);
+// Admin routes - sẽ được gọi từ /admin/categories nên không cần auth ở đây
+router.post('/', createCategory);
+router.put('/:id', updateCategory);
+router.delete('/:id', deleteCategory);
 
 module.exports = router;

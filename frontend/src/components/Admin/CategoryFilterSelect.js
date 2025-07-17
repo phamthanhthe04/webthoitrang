@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/adminService';
+import { getCategories } from '../../services/categoryService';
 
 const CategoryFilterSelect = ({
   value,
@@ -19,10 +19,15 @@ const CategoryFilterSelect = ({
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const response = await adminService.getCategories();
-        if (response && response.data && response.data.data) {
+        const response = await getCategories();
+        if (response && response.data) {
+          // Handle both array and object response formats
+          const categoriesData = Array.isArray(response.data)
+            ? response.data
+            : response.data.data || [];
+
           // Convert flat list to tree structure
-          const categoriesWithLevel = response.data.data.map((cat) => ({
+          const categoriesWithLevel = categoriesData.map((cat) => ({
             ...cat,
             level: cat.level || 0,
           }));
@@ -82,13 +87,13 @@ const CategoryFilterSelect = ({
   };
 
   const handleSelect = (category) => {
-    onChange(category.id === 'all' ? 'all' : category.name);
+    onChange(category.id);
     setIsOpen(false);
   };
 
   const findCategoryByValue = (categories, searchValue) => {
     for (const category of categories) {
-      if (category.id === searchValue || category.name === searchValue) {
+      if (category.id === searchValue) {
         return category;
       }
       if (category.children) {

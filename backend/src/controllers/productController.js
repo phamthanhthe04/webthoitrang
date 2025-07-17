@@ -1,5 +1,72 @@
 const { Product, Category } = require('../models');
 const { Op } = require('sequelize');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Cấu hình Multer để tải lên hình ảnh
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, '../../public/images/products');
+    // Đảm bảo thư mục tải lên tồn tại
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  // Kiểm tra loại tệp
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Chỉ chấp nhận file ảnh!'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Giới hạn 5MB
+  },
+});
+
+// Hàm hỗ trợ xóa tệp hình ảnh một cách an toàn
+const deleteImageFile = (imagePath) => {
+  if (!imagePath) return;
+
+  try {
+    const fullPath = path.join(__dirname, '../../public', imagePath);
+    fs.unlink(fullPath, (err) => {
+      if (err && err.code !== 'ENOENT') {
+        console.error('Lỗi khi xóa tệp hình ảnh:', imagePath, err);
+      } else if (!err) {
+        console.log('✅ [FILE] Đã xóa thành công:', imagePath);
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi xử lý xóa hình ảnh:', imagePath, error);
+  }
+};
+
+// Hàm hỗ trợ xóa nhiều tệp hình ảnh
+const deleteImageFiles = (imagePaths) => {
+  if (!imagePaths || !Array.isArray(imagePaths)) return;
+
+  imagePaths.forEach((imagePath) => {
+    deleteImageFile(imagePath);
+  });
+};
+
+// Xuất middleware upload để sử dụng trong routes
+exports.uploadProductImages = upload.fields([
+  { name: 'mainImage', maxCount: 1 },
+  { name: 'additionalImages', maxCount: 10 },
+]);
 
 // Get all products with filters
 const getAllProducts = async (req, res) => {
@@ -232,7 +299,55 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    await product.update(req.body);
+    // Xử lý file upload nếu có
+    let updateData = { ...req.body };
+    if (req.files) {
+      // Main image
+      if (req.files.mainImage && req.files.mainImage.length > 0) {
+        const mainImageFile = req.files.mainImage[0];
+        updateData.image_url = `/images/products/${mainImageFile.filename}`;
+      }
+      // Additional images
+      if (req.files.additionalImages && req.files.additionalImages.length > 0) {
+        const additionalImagePaths = req.files.additionalImages.map(
+          (file) => `/images/products/${file.filename}`
+        );
+        updateData.images = additionalImagePaths;
+      }
+    }
+
+    // Nếu giữ ảnh cũ, không ghi đè
+    if (
+      updateData.keepOldMainImage === 'true' ||
+      updateData.keepOldMainImage === true
+    ) {
+      delete updateData.image_url;
+    }
+    if (updateData.keepOldAdditionalImages) {
+      // Nếu là chuỗi JSON, parse ra mảng
+      let keepArr = updateData.keepOldAdditionalImages;
+      if (typeof keepArr === 'string') {
+        try {
+          keepArr = JSON.parse(keepArr);
+        } catch {}
+      }
+      // Nếu có giữ ảnh cũ, kết hợp ảnh cũ và mới
+      if (
+        Array.isArray(keepArr) &&
+        product.images &&
+        product.images.length > 0
+      ) {
+        const keptImages = product.images.filter((img, idx) => keepArr[idx]);
+        if (updateData.images && Array.isArray(updateData.images)) {
+          updateData.images = [...keptImages, ...updateData.images];
+        } else {
+          updateData.images = keptImages;
+        }
+      }
+      delete updateData.keepOldAdditionalImages;
+    }
+
+    await product.update(updateData);
 
     res.json({
       success: true,
@@ -272,6 +387,96 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// Bulk delete products
+const bulkDeleteProducts = async (req, res) => {
+  try {
+    const { productIds } = req.body;
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Danh sách ID sản phẩm không hợp lệ',
+      });
+    }
+
+    const products = await Product.findAll({
+      where: { id: productIds },
+    });
+
+    products.forEach((product) => {
+      if (product.image_url) {
+        deleteImageFile(product.image_url);
+      }
+      if (product.images && product.images.length > 0) {
+        deleteImageFiles(product.images);
+      }
+    });
+
+    const deletedCount = await Product.destroy({
+      where: { id: productIds },
+    });
+
+    console.log(`✅ [ADMIN] Đã xóa hàng loạt ${deletedCount} sản phẩm`);
+    res.json({
+      success: true,
+      message: `Xóa thành công ${deletedCount} sản phẩm`,
+      data: { deletedCount },
+    });
+  } catch (error) {
+    console.error('❌ [ADMIN] Lỗi khi xóa hàng loạt sản phẩm:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Lỗi server',
+    });
+  }
+};
+
+// Update product status
+const updateProductStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['active', 'inactive', 'out_of_stock'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Trạng thái không hợp lệ',
+      });
+    }
+
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        error: 'Không tìm thấy sản phẩm',
+      });
+    }
+
+    await product.update({ status });
+    console.log(
+      `✅ [ADMIN] Đã cập nhật trạng thái sản phẩm: ${id} -> ${status}`
+    );
+
+    res.json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    console.error('❌ [ADMIN] Lỗi khi cập nhật trạng thái sản phẩm:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Lỗi server',
+    });
+  }
+};
+
+// Xuất middleware upload để sử dụng trong routes
+const uploadProductImages = upload.fields([
+  { name: 'mainImage', maxCount: 1 },
+  { name: 'additionalImages', maxCount: 10 },
+]);
+
 module.exports = {
   getAllProducts,
   getProduct,
@@ -279,4 +484,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  bulkDeleteProducts,
+  updateProductStatus,
+  uploadProductImages,
 };

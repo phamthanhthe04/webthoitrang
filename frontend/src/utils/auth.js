@@ -1,7 +1,4 @@
-// src/utils/auth.js
-import api from '../services/api'; // Đảm bảo đường dẫn đúng
-
-const TOKEN_KEY = 'token'; // Đảm bảo key này khớp với cách bạn lưu trong authSlice
+const TOKEN_KEY = 'token';
 const USER_KEY = 'userInfo';
 
 export const saveAuthData = (token, user) => {
@@ -10,12 +7,20 @@ export const saveAuthData = (token, user) => {
 };
 
 export const getAuthData = () => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  const user = localStorage.getItem(USER_KEY);
-  return {
-    token,
-    user: user ? JSON.parse(user) : null,
-  };
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const user = localStorage.getItem(USER_KEY);
+    return {
+      token,
+      user: user ? JSON.parse(user) : null,
+    };
+  } catch (error) {
+    console.error('Error retrieving auth data:', error);
+    return {
+      token: null,
+      user: null,
+    };
+  }
 };
 
 export const removeAuthData = () => {
@@ -26,17 +31,3 @@ export const removeAuthData = () => {
 export const getToken = () => {
   return localStorage.getItem(TOKEN_KEY);
 };
-
-// Cấu hình Axios instance để tự động thêm Authorization header
-api.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);

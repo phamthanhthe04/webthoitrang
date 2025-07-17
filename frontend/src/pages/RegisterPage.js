@@ -34,7 +34,7 @@ const RegisterPage = () => {
       setSuccess('Đăng ký thành công!');
       setTimeout(() => navigate('/dang-nhap'), 1500);
     } catch (error) {
-      setError(error.response?.data?.error || 'Đăng ký thất bại');
+      setError(error || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }

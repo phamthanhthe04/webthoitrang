@@ -1,89 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/adminController');
-const { auth } = require('../middleware/auth');
+const { auth, isAdmin } = require('../middleware/auth');
 
-// Middleware to check admin role
-const requireAdmin = (req, res, next) => {
-  console.log(
-    '👑 [ADMIN] Checking admin role for user:',
-    req.user ? `${req.user.name} (${req.user.role})` : 'No user'
-  );
-  if (req.user.role !== 'admin') {
-    console.log('❌ [ADMIN] Access denied - not admin');
-    return res.status(403).json({ message: 'Chỉ admin mới có quyền truy cập' });
-  }
-  console.log('✅ [ADMIN] Admin access granted');
-  next();
-};
+// Dashboard routes - đã có middleware auth và isAdmin trong dashboard.js
+router.use('/dashboard', require('./dashboard'));
 
-// Dashboard
-router.get(
-  '/dashboard-stats',
-  auth,
-  requireAdmin,
-  adminController.getDashboardStats
-);
+// Product admin routes - thêm middleware auth và isAdmin
+router.use('/products', auth, isAdmin, require('./products'));
 
-// Product Management
-router.get('/products', auth, requireAdmin, adminController.getAllProducts);
-router.get('/products/:id', auth, requireAdmin, adminController.getProduct);
-router.post(
-  '/products',
-  auth,
-  requireAdmin,
-  adminController.uploadProductImages,
-  adminController.createProduct
-);
-router.put(
-  '/products/:id',
-  auth,
-  requireAdmin,
-  adminController.uploadProductImages,
-  adminController.updateProduct
-);
-router.delete(
-  '/products/:id',
-  auth,
-  requireAdmin,
-  adminController.deleteProduct
-);
-router.delete(
-  '/products/bulk-delete',
-  auth,
-  requireAdmin,
-  adminController.bulkDeleteProducts
-);
-router.put(
-  '/products/:id/status',
-  auth,
-  requireAdmin,
-  adminController.updateProductStatus
-);
+// Order admin routes - thêm middleware auth và isAdmin
+router.use('/orders', auth, isAdmin, require('./orders'));
 
-// Order Management
-router.get('/orders', auth, requireAdmin, adminController.getAllOrders);
-router.put(
-  '/orders/:id/status',
-  auth,
-  requireAdmin,
-  adminController.updateOrderStatus
-);
+// User admin routes - thêm middleware auth và isAdmin
+router.use('/users', auth, isAdmin, require('./users'));
 
-// User Management
-router.get('/users', auth, requireAdmin, adminController.getAllUsers);
-router.put(
-  '/users/:id/status',
-  auth,
-  requireAdmin,
-  adminController.updateUserStatus
-);
-router.put(
-  '/users/:id/role',
-  auth,
-  requireAdmin,
-  adminController.updateUserRole
-);
-router.delete('/users/:id', auth, requireAdmin, adminController.deleteUser);
+// Category admin routes - thêm middleware auth và isAdmin
+router.use('/categories', auth, isAdmin, require('./categories'));
+
+// Wallet admin routes - các route wallet/admin đã có middleware riêng
+router.use('/wallet', require('./wallet'));
 
 module.exports = router;

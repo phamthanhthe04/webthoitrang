@@ -7,17 +7,22 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  bulkDeleteProducts,
+  updateProductStatus,
+  uploadProductImages,
 } = require('../controllers/productController');
 const { auth, isAdmin } = require('../middleware/auth');
 
 // Public routes
 router.get('/', getAllProducts);
-router.get('/slug/:slug', getProductBySlug); // Thêm route lấy sản phẩm theo slug
+router.get('/slug/:slug', getProductBySlug);
 router.get('/:id', getProduct);
 
-// Admin routes
-router.post('/', auth, isAdmin, createProduct);
-router.put('/:id', auth, isAdmin, updateProduct);
-router.delete('/:id', auth, isAdmin, deleteProduct);
+// Admin routes - sẽ được gọi từ /admin/products nên không cần auth ở đây
+router.post('/', uploadProductImages, createProduct);
+router.put('/:id', uploadProductImages, updateProduct);
+router.delete('/:id', deleteProduct);
+router.delete('/bulk-delete', bulkDeleteProducts);
+router.put('/:id/status', updateProductStatus);
 
 module.exports = router;

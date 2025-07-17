@@ -5,7 +5,9 @@ export const orderService = {
   // Tạo đơn hàng mới
   createOrder: async (orderData) => {
     try {
+      console.log('[ORDER SERVICE] Creating order with data:', orderData);
       const response = await api.post('/orders', orderData);
+      console.log('[ORDER SERVICE] Create order response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Create order error:', error);
@@ -16,10 +18,11 @@ export const orderService = {
   // Lấy danh sách đơn hàng của user
   getUserOrders: async () => {
     try {
-      const response = await api.get('/orders/user');
+      const response = await api.get('/orders/my-orders');
+      console.log('📦 [ORDERS] User orders response:', response);
       return response.data;
     } catch (error) {
-      console.error('Get user orders error:', error);
+      console.error('❌ [ORDERS] Get user orders error:', error);
       throw error;
     }
   },
@@ -53,6 +56,27 @@ export const orderService = {
       return response.data;
     } catch (error) {
       console.error('Cancel order error:', error);
+      throw error;
+    }
+  },
+
+  // Admin order management
+  getAllOrders: async (params = {}) => {
+    try {
+      const response = await api.get('/orders', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Get all orders error:', error);
+      throw error;
+    }
+  },
+
+  deleteOrder: async (id) => {
+    try {
+      const response = await api.delete(`/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Delete order error:', error);
       throw error;
     }
   },

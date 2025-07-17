@@ -1,10 +1,4 @@
-// src/services/authService.js
-
-// This file only needs to import 'api' from the same 'services' directory.
-// It DOES NOT need to import itself, nor does it typically import 'utils/auth'.
-// The authSlice is responsible for interacting with utils/auth (saving/removing tokens).
-
-import api from './api'; // Correct path from src/services/ to src/services/api.js
+import api from './api'; //conect to the API instance
 
 const authService = {
   login: async (email, password) => {
@@ -35,11 +29,6 @@ const authService = {
       throw error.response?.data?.error || 'Đăng ký thất bại';
     }
   },
-
-  // You might add other auth-related functions here later, e.g.,
-  // forgotPassword: async (email) => { ... },
-  // resetPassword: async (token, newPassword) => { ... },
-  // getProfile: async () => { ... }
 
   changePassword: async (passwordData) => {
     try {

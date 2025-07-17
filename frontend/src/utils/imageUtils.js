@@ -1,8 +1,6 @@
-/**
- * Utilities for handling image URLs in the application
- */
+//Xử lí url cho hình ảnh
 
-// Base URL for API server - should match what's in api.js
+// Định nghĩa URL cơ sở của API
 export const API_URL = 'http://localhost:5000';
 
 /**
@@ -20,8 +18,12 @@ export const getImageUrl = (imagePath, fallbackImage = '/no-image.png') => {
     return imagePath;
   }
 
-  // Otherwise, prepend the API URL
-  return `${API_URL}${imagePath}`;
+  // Ensure there is exactly one slash between API_URL and imagePath
+  if (imagePath.startsWith('/')) {
+    return `${API_URL}${imagePath}`;
+  } else {
+    return `${API_URL}/${imagePath}`;
+  }
 };
 
 /**

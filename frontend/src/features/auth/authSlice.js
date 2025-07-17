@@ -1,8 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
-import { removeAuthData } from '../../utils/auth';
+import {
+  removeAuthData,
+  getToken,
+  saveAuthData,
+  getAuthData,
+} from '../../utils/auth';
 
-const getTokenFromLocalstorage = () => localStorage.getItem('jwtToken');
+const { token, user } = getAuthData();
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -43,8 +48,8 @@ export const updateUserProfile = createAsyncThunk(
 
 const initialState = {
   user: null,
-  token: getTokenFromLocalstorage(),
-  isAuthenticated: !!getTokenFromLocalstorage(),
+  token: getToken(),
+  isAuthenticated: !!getToken(),
   loading: false,
   error: null,
 };
@@ -69,63 +74,62 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(login.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(login.fulfilled, (state, action) => {
-      state.loading = false;
-      state.isAuthenticated = true;
+    builder
+      //login
+      .addCase(login.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+        const { token, ...user } = action.payload.data;
+        state.user = user;
+        state.token = token;
+        state.isAuthenticated = true;
+        saveAuthData(token, user);
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Lỗi đăng nhập';
+      })
 
-      state.user = action.payload.data;
-      state.token = action.payload.data.token;
+      //register
+      .addCase(register.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
+        const { token, ...user } = action.payload.data;
+        state.user = user;
+        state.token = token;
+        state.isAuthenticated = true;
+        saveAuthData(token, user);
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Lỗi đăng ký';
+      })
 
-      localStorage.setItem('token', action.payload.data.token);
-    });
-    builder.addCase(login.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload; // action.payload giờ là thông báo lỗi cụ thể
-      state.isAuthenticated = false; // Đảm bảo trạng thái không xác thực
-      state.user = null; // Xóa user info
-      state.token = null; // Xóa token
-      localStorage.removeItem('token'); // Xóa token cũ nếu có
-    });
-    builder.addCase(register.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(register.fulfilled, (state, action) => {
-      state.loading = false;
-      state.isAuthenticated = true;
-      state.user = action.payload.data; // Lấy user từ action.payload.data
-      state.token = action.payload.data.token;
-      localStorage.setItem('token', action.payload.data.token);
-    });
-    builder.addCase(register.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-      state.isAuthenticated = false;
-      state.user = null;
-      state.token = null;
-      localStorage.removeItem('token');
-    });
-
-    // Xử lý updateUserProfile
-    builder.addCase(updateUserProfile.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    });
-    builder.addCase(updateUserProfile.fulfilled, (state, action) => {
-      state.loading = false;
-      state.user = {
-        ...state.user,
-        ...action.payload.data,
-      };
-    });
-    builder.addCase(updateUserProfile.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    });
+      //updateProfile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        //update không trả về token chỉ cần userinfo
+        state.user = action.payload.data;
+        // Cập nhật lại thông tin người dùng trong localStorage
+        const currentAuth = JSON.parse(
+          localStorage.getItem('userInfo') || '{}'
+        );
+        localStorage.setItem('userInfo', JSON.stringify(action.payload.data));
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Lỗi cập nhật thông tin';
+      });
   },
 });
 

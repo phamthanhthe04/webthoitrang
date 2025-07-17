@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/adminService';
+import { getCategories } from '../../services/categoryService';
 
 const CategoryTreeSelect = ({
   value,
@@ -17,8 +17,8 @@ const CategoryTreeSelect = ({
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const response = await adminService.getCategories();
-        if (response && response.data && response.data.data) {
+        const response = await getCategories();
+        if (response && response.data) {
           // Convert flat list to tree structure
           const categoriesWithLevel = response.data.data.map((cat) => ({
             ...cat,
